@@ -24,13 +24,42 @@ export default function ComparePageContent() {
   const [mapsMode, setMapsMode] = useState(false);
 
   useEffect(() => {
-    getPlayerOptionsLegacy({ position_family: positionFamily }).then((r) => {
-      const options = r.options;
-      const validA = options.some((o) => o.player_id === playerA);
-      const validB = options.some((o) => o.player_id === playerB);
-      if (!validA) setPlayerA(options[0]?.player_id ?? "");
-      if (!validB) setPlayerB(options.find((o) => o.player_id !== playerA)?.player_id ?? options[1]?.player_id ?? "");
-    }).catch(() => setError(m.compare.backendUnavailable));
+    let cancelled = false;
+
+    getPlayerOptionsLegacy({ position_family: positionFamily })
+      .then((r) => {
+        if (cancelled) return;
+        const options = r.options;
+        if (!options.length) {
+          setPlayerA("");
+          setPlayerB("");
+          return;
+        }
+
+        setPlayerA((prevA) => {
+          const nextA = options.some((o) => o.player_id === prevA)
+            ? prevA
+            : options[0].player_id;
+          setPlayerB((prevB) => {
+            if (options.some((o) => o.player_id === prevB) && prevB !== nextA) {
+              return prevB;
+            }
+            return (
+              options.find((o) => o.player_id !== nextA)?.player_id ??
+              options[1]?.player_id ??
+              nextA
+            );
+          });
+          return nextA;
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setError(m.compare.backendUnavailable);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [positionFamily, m.compare.backendUnavailable]);
 
   useEffect(() => {
