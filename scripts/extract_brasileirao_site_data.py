@@ -60,6 +60,30 @@ PLAYER_LIST_FIELDS = (
 
 POSITION_FAMILY_IDS = tuple(key for key, _label in EUROPEAN_POSITION_FAMILIES)
 
+# Manual corrections when coordinate-based position inference misclassifies a player.
+POSITION_OVERRIDES: dict[str, str] = {
+    "905453": "CM",      # Marcos Antônio → meio-campista
+    "981452": "RB",      # Gastón Benavídez → lateral
+    "881110": "LB",      # Joaquín Piquerez → lateral
+    "840398": "CM",      # Tchê Tchê → meio-campista
+    "1656036": "CM",     # Gabriel Bontempo → meio-campista
+    "1106487": "CB",     # Victor Gabriel → zagueiro
+}
+
+
+def _load_br_frame():
+    frame = pe._load_br_pass_frame()
+    if frame.empty:
+        return frame
+    frame = frame.copy()
+    frame["player_id"] = frame["player_id"].astype(str)
+    if "position" in frame.columns:
+        frame["position"] = frame["position"].astype(str).str.strip().str.upper()
+    for pid, pos in POSITION_OVERRIDES.items():
+        frame.loc[frame["player_id"] == pid, "position"] = pos.upper()
+    frame["league_source"] = "brasileirao"
+    return frame
+
 
 def _ensure_br_csv() -> None:
     dst = _BACKEND / "season_all_brfull.csv"
@@ -77,15 +101,9 @@ def _pick_fields(player: dict[str, Any], fields: tuple[str, ...]) -> dict[str, A
 def _build_brasileirao_bundle(position_family: str) -> dict[str, Any]:
     """Build full analysis bundle from Brasileirão CSV for one position family."""
     family = normalize_position_family(position_family)
-    frame = pe._load_br_pass_frame()
+    frame = _load_br_frame()
     if frame.empty:
         raise RuntimeError("Brasileirão pass frame is empty")
-
-    frame = frame.copy()
-    frame["player_id"] = frame["player_id"].astype(str)
-    frame["league_source"] = "brasileirao"
-    if "position" in frame.columns:
-        frame["position"] = frame["position"].astype(str).str.strip().str.upper()
 
     filtered = pe._filter_pass_frame_by_position_family(frame, family)
     if filtered.empty:
@@ -208,7 +226,16 @@ def _build_brasileirao_bundle(position_family: str) -> dict[str, Any]:
     }
 
 
-def _top_player_ids(bundle: dict[str, Any], n: int = _TOP_N) -> list[str]:
+def _override_family_for_player(player_id: str) -> str | None:
+    from position_families import family_for_position_code
+
+    pos = POSITION_OVERRIDES.get(str(player_id))
+    if not pos:
+        return None
+    return family_for_position_code(pos)
+
+
+def _top_player_ids(bundle: dict[str, Any], family: str, n: int = _TOP_N) -> list[str]:
     players = bundle["analysis_players"]
     rated = []
     for player in players:
@@ -217,13 +244,192 @@ def _top_player_ids(bundle: dict[str, Any], n: int = _TOP_N) -> list[str]:
         rating = xp.get("xp_pass_rating") or player.get("pass_rating") or 0
         rated.append((pid, float(rating or 0)))
     rated.sort(key=lambda x: x[1], reverse=True)
-    return [pid for pid, _ in rated[:n]]
+    ids = [pid for pid, _ in rated[:n]]
+
+    must_include = [
+        pid for pid in POSITION_OVERRIDES
+        if _override_family_for_player(pid) == family
+        and pid in {str(p["player_id"]) for p in players}
+    ]
+    missing = [pid for pid in must_include if pid not in ids]
+    if missing:
+        keep = max(0, n - len(missing))
+        ids = [pid for pid, _ in rated[:keep]] + missing
+
+    return ids
 
 
 def _write_json(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(sanitize_for_json(payload), ensure_ascii=False), encoding="utf-8")
     print(f"  wrote {path.relative_to(_OUTPUT_DIR)}")
+
+
+def _write_player_reports_ts(family_player_ids: dict[str, list[str]]) -> None:
+    accents = {
+        "centerbacks": "#38bdf8",
+        "fullbacks": "#a78bfa",
+        "midfielders": "#34d399",
+        "wingers": "#fbbf24",
+    }
+    labels = {
+        "centerbacks": ("Zagueiros", "zagueiros"),
+        "fullbacks": ("Laterais", "laterais"),
+        "midfielders": ("Meio-campistas", "meio-campistas"),
+        "wingers": ("Extremos", "extremos"),
+    }
+    categories = []
+    for family in POSITION_FAMILY_IDS:
+        title, plural = labels[family]
+        ids = family_player_ids.get(family, [])
+        players_lines = "\n".join(f'          p("{pid}", "{family}"),' for pid in ids)
+        categories.append(
+            f"""  {{
+    id: "{family}",
+    title: "{title}",
+    subtitle: "Top 15 {plural}",
+    description: "Os 15 {plural} com melhor perfil de passe no Brasileirão 2026.",
+    accent: "{accents[family]}",
+    groups: [
+      {{
+        players: [
+{players_lines}
+        ],
+      }},
+    ],
+  }}"""
+        )
+
+    content = f'''export type ReportPlayerRef = {{
+  playerId: string;
+  positionFamily?: string;
+  note?: string;
+}};
+
+export type ReportPlayerGroup = {{
+  label?: string;
+  players: ReportPlayerRef[];
+}};
+
+export type PlayerReportCategory = {{
+  id: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  accent: string;
+  groups: ReportPlayerGroup[];
+}};
+
+export const POSITION_FAMILIES = [
+  {{ key: "centerbacks", label: "Zagueiros", accent: "#38bdf8" }},
+  {{ key: "fullbacks", label: "Laterais", accent: "#a78bfa" }},
+  {{ key: "midfielders", label: "Meio-campistas", accent: "#34d399" }},
+  {{ key: "wingers", label: "Extremos", accent: "#fbbf24" }},
+] as const;
+
+export type PositionFamilyKey = (typeof POSITION_FAMILIES)[number]["key"];
+
+export const PROFILE_ALL_GROUP = {{
+  id: "all",
+  title: "Todos os jogadores",
+  subtitle: "Pool completo",
+  description: "Top 15 por posição no Brasileirão 2026.",
+  accent: "#cbd5e1",
+}} as const;
+
+function p(playerId: string, positionFamily: PositionFamilyKey, note?: string): ReportPlayerRef {{
+  return {{ playerId, positionFamily, note }};
+}}
+
+/** Top 15 per position — auto-generated by scripts/extract_brasileirao_site_data.py */
+export const PLAYER_REPORT_CATEGORIES: PlayerReportCategory[] = [
+{",\n".join(categories)},
+];
+
+export function allReportPlayerRefs(): ReportPlayerRef[] {{
+  const seen = new Set<string>();
+  const out: ReportPlayerRef[] = [];
+  for (const category of PLAYER_REPORT_CATEGORIES) {{
+    for (const group of category.groups) {{
+      for (const player of group.players) {{
+        if (seen.has(player.playerId)) continue;
+        seen.add(player.playerId);
+        out.push(player);
+      }}
+    }}
+  }}
+  return out;
+}}
+
+export function totalReportCount(): number {{
+  return allReportPlayerRefs().length;
+}}
+
+export type EnrichedReportPlayer = ReportPlayerRef & {{
+  category: PlayerReportCategory;
+  groupLabel?: string;
+  categoryIndex: number;
+}};
+
+export function enrichedReportPlayers(): EnrichedReportPlayer[] {{
+  const out: EnrichedReportPlayer[] = [];
+  for (const category of PLAYER_REPORT_CATEGORIES) {{
+    let categoryIndex = 0;
+    for (const group of category.groups) {{
+      for (const player of group.players) {{
+        categoryIndex += 1;
+        out.push({{
+          ...player,
+          category,
+          groupLabel: group.label,
+          categoryIndex,
+        }});
+      }}
+    }}
+  }}
+  return out;
+}}
+
+export function playerIdsForProfileGroup(groupId: string): Set<string> {{
+  if (groupId === PROFILE_ALL_GROUP.id) {{
+    return new Set(allReportPlayerRefs().map((p) => p.playerId));
+  }}
+  const category = PLAYER_REPORT_CATEGORIES.find((cat) => cat.id === groupId);
+  if (!category) return new Set();
+  const ids = new Set<string>();
+  for (const group of category.groups) {{
+    for (const player of group.players) {{
+      ids.add(player.playerId);
+    }}
+  }}
+  return ids;
+}}
+
+export function profileGroupCounts(
+  players: {{ player_id?: string | number | null }}[],
+): Record<string, number> {{
+  const available = new Set(players.map((p) => String(p.player_id)));
+  const counts: Record<string, number> = {{
+    [PROFILE_ALL_GROUP.id]: players.length,
+  }};
+  for (const category of PLAYER_REPORT_CATEGORIES) {{
+    const ids = playerIdsForProfileGroup(category.id);
+    counts[category.id] = [...ids].filter((id) => available.has(id)).length;
+  }}
+  return counts;
+}}
+
+export function positionFamilyForPlayer(playerId: string): PositionFamilyKey | undefined {{
+  for (const category of PLAYER_REPORT_CATEGORIES) {{
+    const ids = playerIdsForProfileGroup(category.id);
+    if (ids.has(playerId)) return category.id as PositionFamilyKey;
+  }}
+  return undefined;
+}}
+'''
+    out_path = _REPO_ROOT / "lib" / "playerReports.ts"
+    out_path.write_text(content, encoding="utf-8")
+    print(f"  wrote {out_path.relative_to(_REPO_ROOT)}")
 
 
 def main() -> None:
@@ -243,7 +449,7 @@ def main() -> None:
         print(f"\n=== {label} ({family}) ===")
         bundle = _build_brasileirao_bundle(family)
         bundles[family] = bundle
-        top_ids = _top_player_ids(bundle, _TOP_N)
+        top_ids = _top_player_ids(bundle, family, _TOP_N)
         family_player_ids[family] = top_ids
         all_player_ids.extend(top_ids)
         print(f"  Top {_TOP_N}: {', '.join(top_ids)}")
@@ -435,6 +641,8 @@ def main() -> None:
     if organizer_script.exists():
         import subprocess
         subprocess.run([sys.executable, str(organizer_script)], check=True)
+
+    _write_player_reports_ts(family_player_ids)
 
     print(f"\nDone — {len(all_profiles)} profiles in {_OUTPUT_DIR}")
 
