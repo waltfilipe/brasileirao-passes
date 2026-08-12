@@ -14,13 +14,13 @@ const POOL_IDS = new Set(
 );
 
 describe("playerReports", () => {
-  it("includes Gerson in the midfielders group", () => {
-    const midfielderIds = playerIdsForProfileGroup("midfielders");
-    assert.ok(midfielderIds.has("611876"), "Gerson (611876) must be in midfielders reports");
+  it("includes Flamengo midfielders in the team group", () => {
+    const flamengoIds = playerIdsForProfileGroup("flamengo");
+    assert.ok(flamengoIds.has("1145106"), "Flamengo midfielder 1145106 must be in reports");
 
-    const gerson = enrichedReportPlayers().find((entry) => entry.playerId === "611876");
-    assert.ok(gerson, "Gerson must appear in enriched report players");
-    assert.equal(gerson.category.id, "midfielders");
+    const player = enrichedReportPlayers().find((entry) => entry.playerId === "1145106");
+    assert.ok(player, "Flamengo midfielder must appear in enriched report players");
+    assert.equal(player.category.id, "flamengo");
   });
 
   it("only lists report players that exist in the curated pool data", () => {

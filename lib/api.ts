@@ -179,6 +179,7 @@ export function getPlayers(params?: {
   league?: string;
   position_group?: string;
   position_family?: string;
+  team?: string;
   search?: string;
   limit?: number;
 }) {
@@ -186,6 +187,7 @@ export function getPlayers(params?: {
   if (params?.league) qs.set("league", params.league);
   if (params?.position_group) qs.set("position_group", params.position_group);
   if (params?.position_family) qs.set("position_family", params.position_family);
+  if (params?.team) qs.set("team", params.team);
   if (params?.search) qs.set("search", params.search);
   if (params?.limit) qs.set("limit", String(params.limit));
   const q = qs.toString();

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Extract static API payloads for the Brasileirão pass-scout site (top 15 per position family)."""
+"""Extract static API payloads for the Brasileirão pass-scout site (top 3 midfielders per team by minutes)."""
 
 from __future__ import annotations
 
@@ -12,22 +12,30 @@ from typing import Any
 
 _BACKEND = Path("/agent/repos/xpv-xp_site/backend")
 _REPO_ROOT = Path(__file__).resolve().parents[1]
+_SCRIPTS_DIR = Path(__file__).resolve().parent
 _CSV_SOURCE = _REPO_ROOT / "br2026_passes.csv"
 _OUTPUT_DIR = _REPO_ROOT / "data"
-_TOP_N = 15
+_TOP_PER_TEAM = 3
+_POSITION_FAMILY = "midfielders"
 
 if str(_BACKEND) not in sys.path:
     sys.path.insert(0, str(_BACKEND))
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
 
 os.environ.setdefault("PASS_SCOUT_MODE", "local")
 os.environ.setdefault("HEAVY_MAPS_ENABLED", "1")
 
+from brasileirao_teams import (  # noqa: E402
+    BRASILEIRAO_TEAMS,
+    TEAM_KEY_TO_NAME,
+    TEAM_NAME_TO_KEY,
+    team_logo_url,
+)
 from position_families import (  # noqa: E402
-    EUROPEAN_POSITION_FAMILIES,
     normalize_position_family,
     position_family_label,
     player_belongs_to_family,
-    rating_groups_for_family,
 )
 from services.compare_service import build_compare_payload  # noqa: E402
 from services.filters import filter_options_meta, player_options  # noqa: E402
@@ -53,12 +61,10 @@ PLAYER_LIST_FIELDS = (
     "pass_rating", "pass_rating_rank", "pass_rating_total",
     "progression_rating", "progression_rating_rank", "progression_rating_total",
     "total_passes", "total_xt", "xt_per_pass", "midfield_origin_profile",
-    "eligible_for_rating", "xp_pass_rating", "team",
+    "eligible_for_rating", "xp_pass_rating", "team", "team_key", "minutes",
     "pass_volume_letter", "pass_efficiency_letter", "pass_buildup_letter",
     "pass_chance_creation_letter", "defense_letter", "defense_display",
 )
-
-POSITION_FAMILY_IDS = tuple(key for key, _label in EUROPEAN_POSITION_FAMILIES)
 
 # Manual corrections when coordinate-based position inference misclassifies a player.
 POSITION_OVERRIDES: dict[str, str] = {
@@ -235,28 +241,49 @@ def _override_family_for_player(player_id: str) -> str | None:
     return family_for_position_code(pos)
 
 
-def _top_player_ids(bundle: dict[str, Any], family: str, n: int = _TOP_N) -> list[str]:
+def _top_players_per_team(bundle: dict[str, Any], n: int = _TOP_PER_TEAM) -> dict[str, list[str]]:
+    """Return top N midfielders by minutes for each Brasileirão team."""
     players = bundle["analysis_players"]
-    rated = []
+    xp_by_id = bundle["xp_by_id"]
+    by_team: dict[str, list[tuple[str, float]]] = {}
+
     for player in players:
+        team_name = str(player.get("team") or "—")
+        team_key = TEAM_NAME_TO_KEY.get(team_name)
+        if not team_key:
+            continue
         pid = str(player["player_id"])
-        xp = bundle["xp_by_id"].get(pid, {})
-        rating = xp.get("xp_pass_rating") or player.get("pass_rating") or 0
-        rated.append((pid, float(rating or 0)))
-    rated.sort(key=lambda x: x[1], reverse=True)
-    ids = [pid for pid, _ in rated[:n]]
+        xp = xp_by_id.get(pid, {})
+        minutes = xp.get("minutes")
+        if minutes is None:
+            minutes = player.get("minutes")
+        by_team.setdefault(team_key, []).append((pid, float(minutes or 0)))
+
+    team_player_ids: dict[str, list[str]] = {}
+    for team_key, rated in by_team.items():
+        rated.sort(key=lambda item: item[1], reverse=True)
+        team_player_ids[team_key] = [pid for pid, _ in rated[:n]]
 
     must_include = [
         pid for pid in POSITION_OVERRIDES
-        if _override_family_for_player(pid) == family
+        if _override_family_for_player(pid) == _POSITION_FAMILY
         and pid in {str(p["player_id"]) for p in players}
     ]
-    missing = [pid for pid in must_include if pid not in ids]
-    if missing:
-        keep = max(0, n - len(missing))
-        ids = [pid for pid, _ in rated[:keep]] + missing
+    for pid in must_include:
+        player = next((p for p in players if str(p["player_id"]) == pid), None)
+        if not player:
+            continue
+        team_name = str(player.get("team") or "—")
+        team_key = TEAM_NAME_TO_KEY.get(team_name)
+        if not team_key:
+            continue
+        ids = team_player_ids.setdefault(team_key, [])
+        if pid not in ids:
+            if len(ids) >= n:
+                ids.pop()
+            ids.append(pid)
 
-    return ids
+    return team_player_ids
 
 
 def _write_json(path: Path, payload: Any) -> None:
@@ -265,31 +292,59 @@ def _write_json(path: Path, payload: Any) -> None:
     print(f"  wrote {path.relative_to(_OUTPUT_DIR)}")
 
 
-def _write_player_reports_ts(family_player_ids: dict[str, list[str]]) -> None:
-    accents = {
-        "centerbacks": "#38bdf8",
-        "fullbacks": "#a78bfa",
-        "midfielders": "#34d399",
-        "wingers": "#fbbf24",
-    }
-    labels = {
-        "centerbacks": ("Zagueiros", "zagueiros"),
-        "fullbacks": ("Laterais", "laterais"),
-        "midfielders": ("Meio-campistas", "meio-campistas"),
-        "wingers": ("Extremos", "extremos"),
-    }
+def _write_brasileirao_teams_ts() -> None:
+    team_lines = []
+    for team in BRASILEIRAO_TEAMS:
+        team_lines.append(
+            f"""  {{
+    key: "{team['key']}",
+    label: {json.dumps(team['label'], ensure_ascii=False)},
+    accent: "{team['accent']}",
+    logoUrl: "{team_logo_url(int(team['tm_id']))}",
+  }},"""
+        )
+
+    content = f'''export type BrasileiraoTeamKey =
+{chr(10).join(f'  | "{team["key"]}"' for team in BRASILEIRAO_TEAMS)};
+
+export type BrasileiraoTeam = {{
+  key: BrasileiraoTeamKey;
+  label: string;
+  accent: string;
+  logoUrl: string;
+}};
+
+/** Auto-generated by scripts/extract_brasileirao_site_data.py */
+export const BRASILEIRAO_TEAMS: BrasileiraoTeam[] = [
+{chr(10).join(team_lines)}
+];
+
+export const BRASILEIRAO_TEAM_BY_KEY = Object.fromEntries(
+  BRASILEIRAO_TEAMS.map((team) => [team.key, team]),
+) as Record<BrasileiraoTeamKey, BrasileiraoTeam>;
+'''
+    out_path = _REPO_ROOT / "lib" / "brasileiraoTeams.ts"
+    out_path.write_text(content, encoding="utf-8")
+    print(f"  wrote {out_path.relative_to(_REPO_ROOT)}")
+
+
+def _write_player_reports_ts(team_player_ids: dict[str, list[str]]) -> None:
     categories = []
-    for family in POSITION_FAMILY_IDS:
-        title, plural = labels[family]
-        ids = family_player_ids.get(family, [])
-        players_lines = "\n".join(f'          p("{pid}", "{family}"),' for pid in ids)
+    for team in BRASILEIRAO_TEAMS:
+        team_key = str(team["key"])
+        label = str(team["label"])
+        accent = str(team["accent"])
+        ids = team_player_ids.get(team_key, [])
+        players_lines = "\n".join(
+            f'          p("{pid}", "{team_key}"),' for pid in ids
+        )
         categories.append(
             f"""  {{
-    id: "{family}",
-    title: "{title}",
-    subtitle: "Top 15 {plural}",
-    description: "Os 15 {plural} com melhor perfil de passe no Brasileirão 2026.",
-    accent: "{accents[family]}",
+    id: "{team_key}",
+    title: {json.dumps(label, ensure_ascii=False)},
+    subtitle: "Top 3 meio-campistas",
+        description: {json.dumps(f"Os 3 meio-campistas com mais minutos do {label} no Brasileirão 2026.", ensure_ascii=False)},
+    accent: "{accent}",
     groups: [
       {{
         players: [
@@ -302,6 +357,7 @@ def _write_player_reports_ts(family_player_ids: dict[str, list[str]]) -> None:
 
     content = f'''export type ReportPlayerRef = {{
   playerId: string;
+  teamKey?: string;
   positionFamily?: string;
   note?: string;
 }};
@@ -320,28 +376,21 @@ export type PlayerReportCategory = {{
   groups: ReportPlayerGroup[];
 }};
 
-export const POSITION_FAMILIES = [
-  {{ key: "centerbacks", label: "Zagueiros", accent: "#38bdf8" }},
-  {{ key: "fullbacks", label: "Laterais", accent: "#a78bfa" }},
-  {{ key: "midfielders", label: "Meio-campistas", accent: "#34d399" }},
-  {{ key: "wingers", label: "Extremos", accent: "#fbbf24" }},
-] as const;
-
-export type PositionFamilyKey = (typeof POSITION_FAMILIES)[number]["key"];
+export const POSITION_FAMILY = "midfielders" as const;
 
 export const PROFILE_ALL_GROUP = {{
   id: "all",
   title: "Todos os jogadores",
   subtitle: "Pool completo",
-  description: "Top 15 por posição no Brasileirão 2026.",
+  description: "Top 3 meio-campistas por time no Brasileirão 2026.",
   accent: "#cbd5e1",
 }} as const;
 
-function p(playerId: string, positionFamily: PositionFamilyKey, note?: string): ReportPlayerRef {{
-  return {{ playerId, positionFamily, note }};
+function p(playerId: string, teamKey: string, note?: string): ReportPlayerRef {{
+  return {{ playerId, teamKey, positionFamily: POSITION_FAMILY, note }};
 }}
 
-/** Top 15 per position — auto-generated by scripts/extract_brasileirao_site_data.py */
+/** Top 3 midfielders per team — auto-generated by scripts/extract_brasileirao_site_data.py */
 export const PLAYER_REPORT_CATEGORIES: PlayerReportCategory[] = [
 {",\n".join(categories)},
 ];
@@ -405,6 +454,18 @@ export function playerIdsForProfileGroup(groupId: string): Set<string> {{
   return ids;
 }}
 
+export function profileTeamCounts(
+  players: {{ player_id?: string | number | null; team_key?: string | null }}[],
+): Record<string, number> {{
+  const counts: Record<string, number> = {{}};
+  for (const player of players) {{
+    const teamKey = String(player.team_key ?? "");
+    if (!teamKey) continue;
+    counts[teamKey] = (counts[teamKey] ?? 0) + 1;
+  }}
+  return counts;
+}}
+
 export function profileGroupCounts(
   players: {{ player_id?: string | number | null }}[],
 ): Record<string, number> {{
@@ -419,10 +480,10 @@ export function profileGroupCounts(
   return counts;
 }}
 
-export function positionFamilyForPlayer(playerId: string): PositionFamilyKey | undefined {{
+export function teamKeyForPlayer(playerId: string): string | undefined {{
   for (const category of PLAYER_REPORT_CATEGORIES) {{
     const ids = playerIdsForProfileGroup(category.id);
-    if (ids.has(playerId)) return category.id as PositionFamilyKey;
+    if (ids.has(playerId)) return category.id;
   }}
   return undefined;
 }}
@@ -437,111 +498,112 @@ def main() -> None:
     _ensure_br_csv()
     _OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
+    family = _POSITION_FAMILY
+    label = position_family_label(family)
+    print(f"\n=== {label} ({family}) ===")
+    bundle = _build_brasileirao_bundle(family)
+    team_player_ids = _top_players_per_team(bundle, _TOP_PER_TEAM)
     all_player_ids: list[str] = []
+    for team in BRASILEIRAO_TEAMS:
+        team_key = str(team["key"])
+        ids = team_player_ids.get(team_key, [])
+        all_player_ids.extend(ids)
+        print(f"  {team['label']}: {', '.join(ids) or '—'}")
+
     all_rows: list[dict[str, Any]] = []
     all_profiles: dict[str, Any] = {}
     all_pool_metrics: list[dict[str, Any]] = []
-    family_player_ids: dict[str, list[str]] = {}
-    bundles: dict[str, dict[str, Any]] = {}
+    analysis_by_id = {str(p["player_id"]): p for p in bundle["analysis_players"]}
 
-    for family in POSITION_FAMILY_IDS:
-        label = position_family_label(family)
-        print(f"\n=== {label} ({family}) ===")
-        bundle = _build_brasileirao_bundle(family)
-        bundles[family] = bundle
-        top_ids = _top_player_ids(bundle, family, _TOP_N)
-        family_player_ids[family] = top_ids
-        all_player_ids.extend(top_ids)
-        print(f"  Top {_TOP_N}: {', '.join(top_ids)}")
-
-        analysis_by_id = {str(p["player_id"]): p for p in bundle["analysis_players"]}
-        for pid in top_ids:
+    for team in BRASILEIRAO_TEAMS:
+        team_key = str(team["key"])
+        for pid in team_player_ids.get(team_key, []):
             player = analysis_by_id.get(pid) or bundle["players_by_id"].get(pid, {})
             progression = bundle["progression_by_id"].get(pid, {})
             xp = bundle["xp_by_id"].get(pid, {})
-            row = {**player, **({"xp_pass_rating": xp.get("xp_pass_rating")} if xp else {})}
+            row = {
+                **player,
+                "team_key": team_key,
+                "position_family": family,
+                **({"xp_pass_rating": xp.get("xp_pass_rating")} if xp else {}),
+            }
+            if xp.get("minutes") is not None:
+                row["minutes"] = xp.get("minutes")
             if progression:
                 row["progression_rating"] = progression.get("progression_rating")
                 row["progression_rating_rank"] = progression.get("progression_rating_rank")
                 row["progression_rating_total"] = progression.get("progression_rating_total")
             all_rows.append(_pick_fields(row, PLAYER_LIST_FIELDS))
 
-    all_rows.sort(key=lambda r: (r.get("position_family", ""), r.get("pass_rating_rank") or 9999))
+    all_rows.sort(key=lambda r: (r.get("team_key", ""), -(r.get("minutes") or 0)))
     player_id_set = set(all_player_ids)
 
-    position_families_meta = [
-        {"key": key, "label": label} for key, label in EUROPEAN_POSITION_FAMILIES
-    ]
-    position_options = [
-        {"key": key, "label": label, "player_count": len(family_player_ids.get(key, []))}
-        for key, label in EUROPEAN_POSITION_FAMILIES
+    team_options = [
+        {
+            "key": str(team["key"]),
+            "label": str(team["label"]),
+            "player_count": len(team_player_ids.get(str(team["key"]), [])),
+        }
+        for team in BRASILEIRAO_TEAMS
     ]
 
     meta = {
-        "position_family": "all",
-        "position_family_label": "Brasileirão 2026",
+        "position_family": family,
+        "position_family_label": label,
         "player_count": len(all_rows),
         "leagues": ["brasileirao"],
         "league_options": [{"key": "brasileirao", "label": "Brasileirão"}],
+        "team_options": team_options,
         "position_groups": sorted(
             {str(r.get("position_group")) for r in all_rows if r.get("position_group")}
         ),
-        "position_families": position_families_meta,
-        "position_options": position_options,
+        "position_families": [{"key": family, "label": label}],
+        "position_options": [{"key": family, "label": label, "player_count": len(all_rows)}],
         "nationalities": sorted({str(r.get("nationality")) for r in all_rows if r.get("nationality")}),
         "filter_options": {
-            **filter_options_meta("midfielders"),
+            **filter_options_meta(family),
             "leagues": [{"key": "brasileirao", "label": "Brasileirão"}],
-            "position_families": position_families_meta,
+            "teams": team_options,
+            "position_families": [{"key": family, "label": label}],
             "defaults": {
                 "league": "brasileirao",
-                "position_family": "centerbacks",
+                "position_family": family,
                 "position_block": "all",
                 "age_band": "all",
             },
         },
-        "family_player_ids": family_player_ids,
-        "description": "Top 15 por posição — Brasileirão 2026",
+        "team_player_ids": team_player_ids,
+        "description": "Top 3 meio-campistas por time — Brasileirão 2026",
     }
     _write_json(_OUTPUT_DIR / "meta.json", meta)
     _write_json(_OUTPUT_DIR / "players.json", {
-        "position_family": "all",
+        "position_family": family,
         "total": len(all_rows),
         "offset": 0,
         "limit": len(all_rows),
         "players": all_rows,
     })
 
-    all_analysis: list[dict] = []
-    for family, bundle in bundles.items():
-        analysis_by_id = {str(p["player_id"]): p for p in bundle["analysis_players"]}
-        for pid in family_player_ids[family]:
-            if pid in analysis_by_id:
-                all_analysis.append(analysis_by_id[pid])
-
     merged_progression: dict[str, dict] = {}
     merged_xp: dict[str, dict] = {}
-    all_options: list[dict[str, str]] = []
-    for family, bundle in bundles.items():
-        family_analysis = []
-        for pid in family_player_ids[family]:
-            if pid in bundle["progression_by_id"]:
-                merged_progression[pid] = bundle["progression_by_id"][pid]
-            if pid in bundle["xp_by_id"]:
-                merged_xp[pid] = bundle["xp_by_id"][pid]
-            analysis_by_id = {str(p["player_id"]): p for p in bundle["analysis_players"]}
-            if pid in analysis_by_id:
-                family_analysis.append(analysis_by_id[pid])
-        family_opts = player_options(
-            family_analysis,
-            {pid: merged_progression[pid] for pid in family_player_ids[family] if pid in merged_progression},
-            xp_by_id={pid: merged_xp[pid] for pid in family_player_ids[family] if pid in merged_xp},
-            position_family=family,
-        )
-        all_options.extend(family_opts)
+    family_analysis = []
+    for pid in all_player_ids:
+        if pid in bundle["progression_by_id"]:
+            merged_progression[pid] = bundle["progression_by_id"][pid]
+        if pid in bundle["xp_by_id"]:
+            merged_xp[pid] = bundle["xp_by_id"][pid]
+        if pid in analysis_by_id:
+            family_analysis.append(analysis_by_id[pid])
+
+    all_options = player_options(
+        family_analysis,
+        {pid: merged_progression[pid] for pid in all_player_ids if pid in merged_progression},
+        xp_by_id={pid: merged_xp[pid] for pid in all_player_ids if pid in merged_xp},
+        position_family=family,
+    )
 
     _write_json(_OUTPUT_DIR / "players-options.json", {
-        "position_family": "all",
+        "position_family": family,
         "options": all_options,
     })
 
@@ -553,76 +615,69 @@ def main() -> None:
     _orig_prepare = profile_service._prepare_passes_for_round_series
     profile_service._prepare_passes_for_round_series = lambda _df: None
 
+    players_by_id = bundle["players_by_id"]
+    progression_by_id = bundle["progression_by_id"]
+    xp_by_id = bundle["xp_by_id"]
+    passes_by_player = bundle["passes_by_player"]
     pass_filters = [k for k, _ in xstats.maps_tab_pass_options()]
+
     try:
-        for family in POSITION_FAMILY_IDS:
-            bundle = bundles[family]
-            players_by_id = bundle["players_by_id"]
-            progression_by_id = bundle["progression_by_id"]
-            xp_by_id = bundle["xp_by_id"]
-            passes_by_player = bundle["passes_by_player"]
+        for pid in all_player_ids:
+            payload = build_profile_payload(
+                pid,
+                players_by_id=players_by_id,
+                progression_by_id=progression_by_id,
+                xp_by_id=xp_by_id,
+                passes_by_player=passes_by_player,
+            )
+            if payload is None:
+                print(f"  WARNING: no profile for {pid}")
+                continue
+            all_profiles[pid] = payload
+            _write_json(_OUTPUT_DIR / "profiles" / f"{pid}.json", payload)
 
-            for pid in family_player_ids[family]:
-                payload = build_profile_payload(
-                    pid,
-                    players_by_id=players_by_id,
-                    progression_by_id=progression_by_id,
-                    xp_by_id=xp_by_id,
-                    passes_by_player=passes_by_player,
-                )
-                if payload is None:
-                    print(f"  WARNING: no profile for {pid}")
-                    continue
-                all_profiles[pid] = payload
-                _write_json(_OUTPUT_DIR / "profiles" / f"{pid}.json", payload)
+            player = xp_by_id.get(pid) or progression_by_id.get(pid) or players_by_id.get(pid)
+            name = str(player.get("player_name", "—")) if player else "—"
+            for pf in pass_filters:
+                try:
+                    pmap = build_pass_map_images(
+                        pid, name, pass_filter=pf, round_key="all",
+                        position_family=family,
+                    )
+                    _write_json(_OUTPUT_DIR / "pass-maps" / pid / f"{pf}.json", pmap)
+                except Exception as exc:
+                    print(f"  WARNING: pass map {pid}/{pf}: {exc}")
 
-                player = xp_by_id.get(pid) or progression_by_id.get(pid) or players_by_id.get(pid)
-                name = str(player.get("player_name", "—")) if player else "—"
-                for pf in pass_filters:
-                    try:
-                        pmap = build_pass_map_images(
-                            pid, name, pass_filter=pf, round_key="all",
-                            position_family=family,
-                        )
-                        _write_json(_OUTPUT_DIR / "pass-maps" / pid / f"{pf}.json", pmap)
-                    except Exception as exc:
-                        print(f"  WARNING: pass map {pid}/{pf}: {exc}")
+            for rk in REPORT_PASS_MAP_KEYS:
+                try:
+                    rmap = build_report_pass_map_images(
+                        pid, name, report_key=rk, round_key="all",
+                        position_family=family,
+                    )
+                    _write_json(_OUTPUT_DIR / "pass-maps" / pid / f"{rk}.json", rmap)
+                except Exception as exc:
+                    print(f"  WARNING: report map {pid}/{rk}: {exc}")
 
-                for rk in REPORT_PASS_MAP_KEYS:
-                    try:
-                        rmap = build_report_pass_map_images(
-                            pid, name, report_key=rk, round_key="all",
-                            position_family=family,
-                        )
-                        _write_json(_OUTPUT_DIR / "pass-maps" / pid / f"{rk}.json", rmap)
-                    except Exception as exc:
-                        print(f"  WARNING: report map {pid}/{rk}: {exc}")
-
-                profile = progression_by_id.get(pid, players_by_id.get(pid, {}))
-                xp = xp_by_id.get(pid, {})
-                all_pool_metrics.append({**profile, **xp, "player_id": pid, "position_family": family})
+            profile = progression_by_id.get(pid, players_by_id.get(pid, {}))
+            xp = xp_by_id.get(pid, {})
+            all_pool_metrics.append({**profile, **xp, "player_id": pid, "position_family": family})
     finally:
         profile_service._prepare_passes_for_round_series = _orig_prepare
 
     _write_json(_OUTPUT_DIR / "pool-metrics.json", all_pool_metrics)
 
-    completed_frames = []
-    for family, bundle in bundles.items():
-        season = bundle["season"]
-        ids = set(family_player_ids[family])
-        sub = season[season["player_id"].astype(str).isin(ids)]
-        completed = sub[sub["is_won"] & sub["has_end"]].copy()
-        completed_frames.append(completed)
+    season = bundle["season"]
+    sub = season[season["player_id"].astype(str).isin(player_id_set)]
+    completed = sub[sub["is_won"] & sub["has_end"]].copy()
 
     import pandas as pd
-    if completed_frames:
-        all_completed = pd.concat(completed_frames, ignore_index=True)
+    if not completed.empty:
         import xp_study_engine as xpe
-        agg = xpe.aggregate_pass_destination_grids(all_completed)
+        agg = xpe.aggregate_pass_destination_grids(completed)
         _write_json(_OUTPUT_DIR / "aggregated.json", {
-            "position_family": "all",
+            "position_family": family,
             "player_count": len(player_id_set),
-            "total_passes": int(len(all_completed)),
+            "total_passes": int(len(completed)),
             "min_passes_cutoff": 0,
             "quadrant_stats": agg.get("quadrant_stats", []),
             "common_map_b64": _grid_map_b64(agg.get("count_grid"), draw_midfielder_common_passes_map, "Passes comuns"),
@@ -634,7 +689,7 @@ def main() -> None:
         "player_count": len(all_player_ids),
         "player_ids": all_player_ids,
         "profiles": list(all_profiles.keys()),
-        "family_player_ids": family_player_ids,
+        "team_player_ids": team_player_ids,
     })
 
     organizer_script = _REPO_ROOT / "scripts" / "build_organizer_data.py"
@@ -642,7 +697,8 @@ def main() -> None:
         import subprocess
         subprocess.run([sys.executable, str(organizer_script)], check=True)
 
-    _write_player_reports_ts(family_player_ids)
+    _write_brasileirao_teams_ts()
+    _write_player_reports_ts(team_player_ids)
 
     print(f"\nDone — {len(all_profiles)} profiles in {_OUTPUT_DIR}")
 

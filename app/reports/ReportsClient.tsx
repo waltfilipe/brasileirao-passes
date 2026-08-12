@@ -285,7 +285,11 @@ export function ReportsClient() {
           {PLAYER_REPORT_CATEGORIES.map((cat) => {
             const count = reports.filter((r) => r.entry.category.id === cat.id).length;
             const isActive = activeCategory === cat.id;
-            const meta = m.profileCategories[cat.id];
+            const meta = m.profileCategories[cat.id] ?? {
+              title: cat.title,
+              subtitle: cat.subtitle,
+              description: cat.description,
+            };
             return (
               <button
                 key={cat.id}
@@ -327,7 +331,11 @@ export function ReportsClient() {
       </section>
 
       {activeCategoryMeta && (() => {
-        const meta = m.profileCategories[activeCategoryMeta.id];
+        const meta = m.profileCategories[activeCategoryMeta.id] ?? {
+          title: activeCategoryMeta.title,
+          subtitle: activeCategoryMeta.subtitle,
+          description: activeCategoryMeta.description,
+        };
         return (
         <div className="reports-active-banner report-screen-only">
           <div>

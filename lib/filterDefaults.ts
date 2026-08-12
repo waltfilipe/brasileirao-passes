@@ -41,10 +41,10 @@ export const DEFAULT_FILTER_OPTIONS: FilterOptionsMeta = {
     { key: "chance_grade", label: "Chance creation" },
   ],
   position_families: [...POSITION_FAMILIES],
-  position_blocks: positionBlocksForFamily("centerbacks"),
+  position_blocks: positionBlocksForFamily("midfielders"),
   defaults: {
     league: "brasileirao",
-    position_family: "centerbacks",
+    position_family: "midfielders",
     position_block: "all",
     age_band: "all",
     age_slider: [16, 42],

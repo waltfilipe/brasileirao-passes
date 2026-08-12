@@ -102,6 +102,10 @@ export type Messages = {
       eyebrow: string;
       ariaLabel: string;
     };
+    teamFilter: {
+      eyebrow: string;
+      ariaLabel: string;
+    };
   };
   players: {
     subtitle: string;
@@ -359,9 +363,9 @@ const en: Messages = {
   home: {
     eyebrow: "Brasileirão pass analytics",
     lead:
-      "Pass analysis of the top 15 players per position in Brasileirão 2026 — center-backs, full-backs, midfielders and wingers.",
+      "Pass analysis of the top 3 midfielders by minutes for each Brasileirão 2026 team — 60 players across 20 clubs.",
     playersStat: "players",
-    leaguesStat: "positions",
+    leaguesStat: "teams",
     modelStat: "M4 model",
     modulesAria: "xP & xPV Analysis modules",
     footnote: "",
@@ -404,7 +408,7 @@ const en: Messages = {
     modules: {
       reports: {
         title: "Reports",
-        description: "PDF-ready reports for 60 players — xP grades, pass scores and maps by position.",
+        description: "PDF-ready reports for 60 midfielders — xP grades, pass scores and maps by team.",
       },
       profile: {
         title: "Profile",
@@ -443,6 +447,10 @@ const en: Messages = {
     leagueFilter: {
       eyebrow: "League filter",
       ariaLabel: "Filter players by league",
+    },
+    teamFilter: {
+      eyebrow: "Team filter",
+      ariaLabel: "Filter players by team",
     },
   },
   players: {
@@ -715,27 +723,7 @@ const en: Messages = {
     all: {
       title: "All Players",
       subtitle: "Full curated pool",
-      description: "Top 15 per position in Brasileirão 2026 — 60 players total.",
-    },
-    centerbacks: {
-      title: "Center-backs",
-      subtitle: "Top 15 center-backs",
-      description: "The 15 center-backs with the best pass profile in Brasileirão 2026.",
-    },
-    fullbacks: {
-      title: "Full-backs",
-      subtitle: "Top 15 full-backs",
-      description: "The 15 full-backs with the best pass profile in Brasileirão 2026.",
-    },
-    midfielders: {
-      title: "Midfielders",
-      subtitle: "Top 15 midfielders",
-      description: "The 15 midfielders with the best pass profile in Brasileirão 2026.",
-    },
-    wingers: {
-      title: "Wingers",
-      subtitle: "Top 15 wingers",
-      description: "The 15 wingers with the best pass profile in Brasileirão 2026.",
+      description: "Top 3 midfielders by minutes per team in Brasileirão 2026 — 60 players total.",
     },
   },
   groupLabels: {
@@ -805,9 +793,9 @@ const pt: Messages = {
   home: {
     eyebrow: "Análise de passes — Brasileirão",
     lead:
-      "Análise de passes dos 15 melhores jogadores por posição no Brasileirão 2026 — zagueiros, laterais, meio-campistas e extremos.",
+      "Análise de passes dos 3 meio-campistas com mais minutos de cada time no Brasileirão 2026 — 60 jogadores em 20 clubes.",
     playersStat: "jogadores",
-    leaguesStat: "posições",
+    leaguesStat: "times",
     modelStat: "modelo M4",
     modulesAria: "Módulos do xP & xPV Analysis",
     footnote: "",
@@ -850,7 +838,7 @@ const pt: Messages = {
     modules: {
       reports: {
         title: "Relatórios",
-        description: "Relatórios PDF de 60 jogadores — grades xP, pass scores e mapas por posição.",
+        description: "Relatórios PDF de 60 meio-campistas — grades xP, pass scores e mapas por time.",
       },
       profile: {
         title: "Perfil",
@@ -889,6 +877,10 @@ const pt: Messages = {
     leagueFilter: {
       eyebrow: "Filtro de liga",
       ariaLabel: "Filtrar jogadores por liga",
+    },
+    teamFilter: {
+      eyebrow: "Filtro de time",
+      ariaLabel: "Filtrar jogadores por time",
     },
   },
   players: {
@@ -1161,27 +1153,7 @@ const pt: Messages = {
     all: {
       title: "Todos os jogadores",
       subtitle: "Pool completo",
-      description: "Top 15 por posição no Brasileirão 2026 — 60 jogadores no total.",
-    },
-    centerbacks: {
-      title: "Zagueiros",
-      subtitle: "Top 15 zagueiros",
-      description: "Os 15 zagueiros com melhor perfil de passe no Brasileirão 2026.",
-    },
-    fullbacks: {
-      title: "Laterais",
-      subtitle: "Top 15 laterais",
-      description: "Os 15 laterais com melhor perfil de passe no Brasileirão 2026.",
-    },
-    midfielders: {
-      title: "Meio-campistas",
-      subtitle: "Top 15 meio-campistas",
-      description: "Os 15 meio-campistas com melhor perfil de passe no Brasileirão 2026.",
-    },
-    wingers: {
-      title: "Extremos",
-      subtitle: "Top 15 extremos",
-      description: "Os 15 extremos com melhor perfil de passe no Brasileirão 2026.",
+      description: "Top 3 meio-campistas por time no Brasileirão 2026 — 60 jogadores no total.",
     },
   },
   groupLabels: {

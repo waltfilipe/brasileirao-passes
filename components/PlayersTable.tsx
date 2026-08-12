@@ -191,7 +191,7 @@ export function PlayersTable({ players, positionFamily }: Props) {
           {sorted.map(({ player, pass_rating }) => (
             <tr key={player.player_id}>
               <td>
-                <Link href={`/profile?player=${player.player_id}&position_family=${positionFamily}`}>
+                <Link href={`/profile?player=${player.player_id}`}>
                   {player.player_name}
                 </Link>
               </td>

@@ -7,17 +7,16 @@ import { PlayerSearchRow } from "@/components/PlayerSearchRow";
 import { ProfileGroupCards } from "@/components/ProfileGroupCards";
 import { ProfileView } from "@/components/ProfileView";
 import { getPlayerOptions, getPlayers } from "@/lib/api";
-import { PROFILE_ALL_GROUP, positionFamilyForPlayer, profileGroupCounts } from "@/lib/playerReports";
-import { filtersFromRecord, type ProfileFilterState } from "@/lib/profileParams";
+import { POSITION_FAMILY, PROFILE_ALL_GROUP, profileGroupCounts, profileTeamCounts } from "@/lib/playerReports";
+import { filtersFromRecord, filtersToApiParams, type ProfileFilterState } from "@/lib/profileParams";
 import { useI18n } from "@/lib/i18n/context";
 
-function filtersForGroup(filters: ProfileFilterState): ProfileFilterState {
-  const group = filters.profile_group ?? PROFILE_ALL_GROUP.id;
-  if (group === PROFILE_ALL_GROUP.id) {
-    const { profile_group: _removed, ...rest } = filters;
+function filtersForTeam(filters: ProfileFilterState): ProfileFilterState {
+  if (!filters.team) {
+    const { team: _removed, ...rest } = filters;
     return rest;
   }
-  return { ...filters, profile_group: group, position_family: group };
+  return filters;
 }
 
 function ProfilePageBodyInner() {
@@ -27,11 +26,11 @@ function ProfilePageBodyInner() {
     () => filtersFromRecord(Object.fromEntries(searchParams.entries())),
     [searchParams],
   );
-  const profileGroup = filters.profile_group ?? PROFILE_ALL_GROUP.id;
-  const activeFilters = useMemo(() => filtersForGroup(filters), [filters]);
+  const activeFilters = useMemo(() => filtersForTeam(filters), [filters]);
 
   const [options, setOptions] = useState<{ player_id: string; label: string }[]>([]);
   const [groupCounts, setGroupCounts] = useState<Record<string, number>>({});
+  const [teamCounts, setTeamCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,14 +42,16 @@ function ProfilePageBodyInner() {
     setError(null);
 
     const currentFilters = filtersFromRecord(Object.fromEntries(searchParams.entries()));
+    const apiParams = filtersToApiParams(filtersForTeam(currentFilters));
 
     Promise.all([
-      getPlayers({ limit: 100 }),
-      getPlayerOptions(filtersForGroup(currentFilters)),
+      getPlayers({ limit: 100, ...apiParams }),
+      getPlayerOptions(filtersForTeam(currentFilters)),
     ])
       .then(([playersRes, optionsRes]) => {
         if (cancelled) return;
         setGroupCounts(profileGroupCounts(playersRes.players));
+        setTeamCounts(profileTeamCounts(playersRes.players));
         setOptions(optionsRes.options);
       })
       .catch((e) => {
@@ -68,10 +69,6 @@ function ProfilePageBodyInner() {
   }, [filterKey, searchParams, m.compare.backendUnavailable]);
 
   const playerId = filters.player ?? options[0]?.player_id;
-  const positionFamily =
-    filters.position_family ??
-    (playerId ? positionFamilyForPlayer(playerId) : undefined) ??
-    (profileGroup !== PROFILE_ALL_GROUP.id ? profileGroup : "centerbacks");
 
   if (loading) {
     return <LoadingState message={m.profile.loadingPool} />;
@@ -85,7 +82,11 @@ function ProfilePageBodyInner() {
         </p>
       )}
 
-      <ProfileGroupCards current={{ ...filters, profile_group: profileGroup }} counts={groupCounts} />
+      <ProfileGroupCards
+        current={filters}
+        counts={groupCounts}
+        teamCounts={teamCounts}
+      />
 
       {options.length > 0 ? (
         <PlayerSearchRow options={options} currentId={playerId} filters={activeFilters} />
@@ -95,7 +96,7 @@ function ProfilePageBodyInner() {
         </p>
       ) : null}
 
-      {playerId ? <ProfileView playerId={playerId} positionFamily={positionFamily} /> : null}
+      {playerId ? <ProfileView playerId={playerId} positionFamily={POSITION_FAMILY} /> : null}
     </>
   );
 }

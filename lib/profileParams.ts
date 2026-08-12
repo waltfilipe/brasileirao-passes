@@ -21,6 +21,7 @@ export type ProfileFilterState = {
   position_family?: string;
   position_block?: string;
   profile_group?: string;
+  team?: string;
   regions?: string;
   countries?: string;
 };
@@ -53,6 +54,7 @@ export function filtersFromRecord(params: Record<string, string | string[] | und
     position_family: get("position_family"),
     position_block: get("position_block"),
     profile_group: get("profile_group"),
+    team: get("team"),
     regions: get("regions"),
     countries: get("countries"),
   };
@@ -85,6 +87,7 @@ export function buildProfileQuery(filters: ProfileFilterState): string {
   set("position_family", filters.position_family);
   set("position_block", filters.position_block);
   set("profile_group", filters.profile_group);
+  set("team", filters.team);
   set("regions", filters.regions);
   set("countries", filters.countries);
   return params.toString();
@@ -121,5 +124,6 @@ export function filtersToApiParams(filters: ProfileFilterState): Record<string, 
   if (filters.chance_grade) out.chance_grade = filters.chance_grade;
   if (filters.position_block) out.position_block = filters.position_block;
   if (filters.profile_group) out.profile_group = filters.profile_group;
+  if (filters.team) out.team = filters.team;
   return out;
 }

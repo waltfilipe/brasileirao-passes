@@ -467,7 +467,7 @@ export function PlayerReportSheet({
           </span>
           <span className="report-sheet-footer-right">
             <Link
-              href={`/profile?player=${playerId}&position_family=${entry.positionFamily ?? "centerbacks"}`}
+              href={`/profile?player=${playerId}&team=${entry.teamKey ?? ""}`}
               className="report-screen-only"
             >
               {m.common.fullProfile}

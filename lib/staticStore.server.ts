@@ -272,6 +272,11 @@ function filterPool(players: JsonRecord[], params: URLSearchParams): JsonRecord[
     }
   }
 
+  const team = params.get("team");
+  if (team && team !== "all") {
+    filtered = filtered.filter((p) => String(p.team_key ?? "") === team);
+  }
+
   const positionFamily = params.get("position_family");
   if (positionFamily && positionFamily !== "all") {
     filtered = filtered.filter((p) => String(p.position_family ?? "") === positionFamily);
