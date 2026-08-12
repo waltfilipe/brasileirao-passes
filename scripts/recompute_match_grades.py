@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Recompute per-match composite grades, consistency tiers, and profile indices."""
+"""Recompute per-match composite grades for the Brasileirão static site."""
 
 from __future__ import annotations
 
@@ -9,15 +9,18 @@ import sys
 from pathlib import Path
 from typing import Any
 
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+_SCRIPTS_DIR = Path(__file__).resolve().parent
 _BACKEND = Path(__file__).resolve().parents[2] / "xpv-xp_site" / "backend"
+
 if str(_BACKEND) not in sys.path:
     sys.path.insert(0, str(_BACKEND))
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
 
 os.environ.setdefault("PASS_SCOUT_MODE", "local")
 
 import xpass_engine as xpe  # noqa: E402
-import xp_engine as xe  # noqa: E402
-from services.data_parts import clear_data_parts_cache, get_data_parts  # noqa: E402
 from services.profile_service import (  # noqa: E402
     build_round_grade_series,
     build_xp_indices,
@@ -26,10 +29,15 @@ from services.profile_service import (  # noqa: E402
 from xp_stats_engine import XP_ROUND_SERIES_KEY, round_production_series  # noqa: E402
 import xp_stats_engine as xstats  # noqa: E402
 
-DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+from extract_brasileirao_site_data import (  # noqa: E402
+    _POSITION_FAMILIES,
+    _build_brasileirao_bundle,
+    _ensure_br_csv,
+)
+
+DATA_DIR = _REPO_ROOT / "data"
 PROFILES_DIR = DATA_DIR / "profiles"
 PLAYER_IDS_FILE = DATA_DIR / "player-ids.json"
-POSITION_FAMILY = "midfielders"
 
 XP_COMPOSITE_PREFIXES = (
     "xp_game_grade",
@@ -65,7 +73,6 @@ def _refresh_round_series(
     rows: list[dict[str, Any]],
     passes_by_player: dict[str, Any],
 ) -> int:
-    """Attach xPass and rebuild per-match series (incl. short/long COE) for pool rows."""
     refreshed = 0
     for row in rows:
         pid = str(row.get("player_id") or "")
@@ -93,24 +100,25 @@ def _merge_xp_composite_fields(xp: dict[str, Any], row: dict[str, Any]) -> None:
 
 
 def main() -> None:
+    _ensure_br_csv()
     player_ids = [str(pid) for pid in json.loads(PLAYER_IDS_FILE.read_text(encoding="utf-8"))]
+    featured = set(player_ids)
+    xp_lookup: dict[str, dict[str, Any]] = {}
 
-    print("Loading midfielder bundle…")
-    clear_data_parts_cache()
-    parts = get_data_parts(POSITION_FAMILY, require_passes=True)
-    xp_by_id = parts["xp_by_id"]
+    for family, title, _plural, _accent in _POSITION_FAMILIES:
+        print(f"\n=== {title} ({family}) ===")
+        bundle = _build_brasileirao_bundle(family)
+        pool_rows = [dict(xp) for xp in bundle["xp_by_id"].values()]
+        passes_by_player = bundle["passes_by_player"]
 
-    print("Loading scored passes with geometry for xPass COE…")
-    passes_by_player = xe.load_european_league_xp_passes_grouped(POSITION_FAMILY)
+        print(f"Refreshing per-match COE for {len(pool_rows)} pool players…")
+        refreshed = _refresh_round_series(pool_rows, passes_by_player)
+        print(f"  {refreshed} players with xPass round series")
 
-    pool_rows = [dict(xp) for xp in xp_by_id.values()]
-    print(f"Refreshing per-match COE for {len(pool_rows)} pool players…")
-    refreshed = _refresh_round_series(pool_rows, passes_by_player)
-    print(f"  {refreshed} players with xPass round series")
-
-    print("Recomputing composite match grades and profile indices on full position pool…")
-    xstats.attach_composite_indices(pool_rows)
-    xp_lookup = {str(row["player_id"]): row for row in pool_rows}
+        print("Recomputing composite match grades and profile indices…")
+        xstats.attach_composite_indices(pool_rows)
+        for row in pool_rows:
+            xp_lookup[str(row["player_id"])] = row
 
     updated = 0
     with_eff = 0
@@ -142,14 +150,11 @@ def main() -> None:
             if g.get("short_pass_eff_pct") is not None or g.get("long_pass_eff_pct") is not None
         )
         with_eff += filled
-        consistency = next((i for i in profile["xp_indices"] if i.get("key") == "consistency"), {})
         grades = row.get("xp_game_grades") or ()
         if grades:
             print(
                 f"  {row.get('player_name', pid)}: COE {filled}/{len(games)}, "
-                f"grades {min(grades):.2f}–{max(grades):.2f}, "
-                f"consistency tier={consistency.get('tier')}, "
-                f"display={xp.get('xp_consistency_display')}"
+                f"grades {min(grades):.2f}–{max(grades):.2f}"
             )
 
     pool_metrics_path = DATA_DIR / "pool-metrics.json"
@@ -166,7 +171,16 @@ def main() -> None:
         pool_metrics_path.write_text(json.dumps(pool_rows_json, ensure_ascii=False), encoding="utf-8")
         print("  updated pool-metrics.json")
 
-    print(f"Done — {updated} profiles updated, {with_eff} game rows with COE")
+    orphan_profiles = [
+        path for path in PROFILES_DIR.glob("*.json")
+        if path.stem not in featured
+    ]
+    for path in orphan_profiles:
+        path.unlink()
+    if orphan_profiles:
+        print(f"  removed {len(orphan_profiles)} orphan profiles")
+
+    print(f"\nDone — {updated} profiles updated, {with_eff} game rows with COE")
 
 
 if __name__ == "__main__":
