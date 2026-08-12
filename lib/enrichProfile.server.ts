@@ -30,8 +30,12 @@ let derivedCache: DerivedPoolFile | null = null;
 
 function getDerivedPool(): DerivedPoolFile {
   if (!derivedCache) {
-    const filePath = path.join(process.cwd(), "data", "pool-derived-metrics.json");
-    derivedCache = JSON.parse(fs.readFileSync(filePath, "utf-8")) as DerivedPoolFile;
+    try {
+      const filePath = path.join(process.cwd(), "data", "pool-derived-metrics.json");
+      derivedCache = JSON.parse(fs.readFileSync(filePath, "utf-8")) as DerivedPoolFile;
+    } catch {
+      derivedCache = { players: {} };
+    }
   }
   return derivedCache;
 }
