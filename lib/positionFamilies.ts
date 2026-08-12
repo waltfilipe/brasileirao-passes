@@ -1,10 +1,8 @@
 /** Position family options — shared without pulling in full filter defaults. */
 
 export const POSITION_FAMILIES = [
-  { key: "centerbacks", label: "Zagueiros" },
   { key: "fullbacks", label: "Laterais" },
   { key: "midfielders", label: "Meio-campistas" },
-  { key: "wingers", label: "Extremos" },
 ] as const;
 
 export function positionBlocksForFamily(family: string): { key: string; label: string }[] {

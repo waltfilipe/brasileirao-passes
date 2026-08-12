@@ -153,6 +153,7 @@ export type Messages = {
     backendUnavailable: string;
     pickerPlaceholder: string;
     mapLoadFailed: string;
+    samePositionRequired: string;
     metric: string;
     radarAria: string;
     passOriginAlt: string;
@@ -363,9 +364,9 @@ const en: Messages = {
   home: {
     eyebrow: "Brasileirão pass analytics",
     lead:
-      "Pass analysis of the top 3 midfielders by minutes for each Brasileirão 2026 team — 60 players across 20 clubs.",
+      "Pass analysis of the top 30 midfielders and top 30 full-backs in Brasileirão 2026 — 60 players ranked by pass profile.",
     playersStat: "players",
-    leaguesStat: "teams",
+    leaguesStat: "positions",
     modelStat: "M4 model",
     modulesAria: "xP & xPV Analysis modules",
     footnote: "",
@@ -408,7 +409,7 @@ const en: Messages = {
     modules: {
       reports: {
         title: "Reports",
-        description: "PDF-ready reports for 60 midfielders — xP grades, pass scores and maps by team.",
+        description: "PDF-ready reports for 60 players — xP grades, pass scores and maps by position.",
       },
       profile: {
         title: "Profile",
@@ -480,6 +481,7 @@ const en: Messages = {
     backendUnavailable: "API unavailable — try again shortly.",
     pickerPlaceholder: "Type player name…",
     mapLoadFailed: "Failed to load map",
+    samePositionRequired: "Players must be from the same position pool to compare.",
     metric: "Metric",
     radarAria: "Pass profile radar comparison",
     passOriginAlt: "Pass origin heatmap",
@@ -723,7 +725,17 @@ const en: Messages = {
     all: {
       title: "All Players",
       subtitle: "Full curated pool",
-      description: "Top 3 midfielders by minutes per team in Brasileirão 2026 — 60 players total.",
+      description: "Top 30 midfielders and 30 full-backs in Brasileirão 2026 — 60 players total.",
+    },
+    midfielders: {
+      title: "Midfielders",
+      subtitle: "Top 30 midfielders",
+      description: "The 30 midfielders with the best pass profile in Brasileirão 2026.",
+    },
+    fullbacks: {
+      title: "Full-backs",
+      subtitle: "Top 30 full-backs",
+      description: "The 30 full-backs with the best pass profile in Brasileirão 2026.",
     },
   },
   groupLabels: {
@@ -793,9 +805,9 @@ const pt: Messages = {
   home: {
     eyebrow: "Análise de passes — Brasileirão",
     lead:
-      "Análise de passes dos 3 meio-campistas com mais minutos de cada time no Brasileirão 2026 — 60 jogadores em 20 clubes.",
+      "Análise de passes dos 30 melhores meio-campistas e 30 melhores laterais do Brasileirão 2026 — 60 jogadores ranqueados por perfil de passe.",
     playersStat: "jogadores",
-    leaguesStat: "times",
+    leaguesStat: "posições",
     modelStat: "modelo M4",
     modulesAria: "Módulos do xP & xPV Analysis",
     footnote: "",
@@ -838,7 +850,7 @@ const pt: Messages = {
     modules: {
       reports: {
         title: "Relatórios",
-        description: "Relatórios PDF de 60 meio-campistas — grades xP, pass scores e mapas por time.",
+        description: "Relatórios PDF de 60 jogadores — grades xP, pass scores e mapas por posição.",
       },
       profile: {
         title: "Perfil",
@@ -905,11 +917,12 @@ const pt: Messages = {
   compare: {
     subtitle: "Compare dois meias em pilares xP, pass scores e heatmaps de origem.",
     pageLead:
-      "Compare dois meio-campistas do pool europeu. Métricas e notas são relativas aos pares da posição.",
+      "Compare dois jogadores do Brasileirão. Métricas e notas são relativas aos pares da mesma posição.",
     loading: "Carregando comparação…",
     backendUnavailable: "API indisponível — tente novamente em instantes.",
     pickerPlaceholder: "Digite o nome do jogador…",
     mapLoadFailed: "Falha ao carregar mapa",
+    samePositionRequired: "Os jogadores precisam ser da mesma posição para comparar.",
     metric: "Métrica",
     radarAria: "Comparação radar de perfil de passe",
     passOriginAlt: "Heatmap de origem dos passes",
@@ -1153,7 +1166,17 @@ const pt: Messages = {
     all: {
       title: "Todos os jogadores",
       subtitle: "Pool completo",
-      description: "Top 3 meio-campistas por time no Brasileirão 2026 — 60 jogadores no total.",
+      description: "Top 30 meio-campistas e 30 laterais no Brasileirão 2026 — 60 jogadores no total.",
+    },
+    midfielders: {
+      title: "Meio-campistas",
+      subtitle: "Top 30 meio-campistas",
+      description: "Os 30 meio-campistas com melhor perfil de passe no Brasileirão 2026.",
+    },
+    fullbacks: {
+      title: "Laterais",
+      subtitle: "Top 30 laterais",
+      description: "Os 30 laterais com melhor perfil de passe no Brasileirão 2026.",
     },
   },
   groupLabels: {

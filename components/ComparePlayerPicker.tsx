@@ -4,16 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import { getPlayerOptionsLegacy, type PlayerOption } from "@/lib/api";
 import { useI18n } from "@/lib/i18n/context";
 
-const POSITION_FAMILY = "all";
-
 type Props = {
   label: string;
   value: string;
   exclude?: string;
+  positionFamily: string;
   onChange: (playerId: string) => void;
 };
 
-export function ComparePlayerPicker({ label, value, exclude, onChange }: Props) {
+export function ComparePlayerPicker({ label, value, exclude, positionFamily, onChange }: Props) {
   const { m } = useI18n();
   const [search, setSearch] = useState("");
   const [options, setOptions] = useState<PlayerOption[]>([]);
@@ -22,7 +21,7 @@ export function ComparePlayerPicker({ label, value, exclude, onChange }: Props) 
   useEffect(() => {
     const timer = window.setTimeout(() => {
       getPlayerOptionsLegacy({
-        position_family: POSITION_FAMILY,
+        position_family: positionFamily,
         search: search.trim() || undefined,
         exclude,
       })
@@ -30,7 +29,7 @@ export function ComparePlayerPicker({ label, value, exclude, onChange }: Props) 
         .catch(() => setOptions([]));
     }, 180);
     return () => window.clearTimeout(timer);
-  }, [search, exclude]);
+  }, [search, exclude, positionFamily]);
 
   const selected = useMemo(
     () => options.find((o) => o.player_id === value),

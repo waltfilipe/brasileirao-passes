@@ -9,7 +9,10 @@ export function GET(request: NextRequest) {
   }
   const payload = getStaticCompare(playerA, playerB);
   if (!payload) {
-    return NextResponse.json({ detail: "One or both players not found or missing xP data" }, { status: 404 });
+    return NextResponse.json(
+      { detail: "One or both players not found, or players are from different position pools" },
+      { status: 404 },
+    );
   }
   return NextResponse.json(payload);
 }

@@ -341,7 +341,17 @@ export function getStaticPlayerProfile(playerId: string) {
   return enrichPlayerProfile(profile);
 }
 
+function getPlayerPositionFamily(playerId: string): string | null {
+  const player = getPlayersData().players.find((row) => String(row.player_id) === playerId);
+  const family = player?.position_family;
+  return family ? String(family) : null;
+}
+
 export function getStaticCompare(playerA: string, playerB: string) {
+  const familyA = getPlayerPositionFamily(playerA);
+  const familyB = getPlayerPositionFamily(playerB);
+  if (!familyA || !familyB || familyA !== familyB) return null;
+
   const profileA = enrichPlayerProfile(getProfile(playerA) ?? {});
   const profileB = enrichPlayerProfile(getProfile(playerB) ?? {});
   if (!profileA?.player || !profileB?.player) return null;

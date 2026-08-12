@@ -11,8 +11,6 @@ import { getPassMap } from "@/lib/api";
 import { formatContractUntil } from "@/lib/formatters";
 import { useI18n } from "@/lib/i18n/context";
 
-const POSITION_FAMILY = "all";
-
 function FactIcon({ icon }: { icon: string }) {
   return (
     <span className="identity-fact-icon" aria-hidden="true">
@@ -34,6 +32,7 @@ type Props = {
   heatmap?: string | null;
   playerId: string;
   excludePlayerId?: string;
+  positionFamily: string;
   onPlayerChange: (playerId: string) => void;
   mapsMode?: boolean;
   onToggleMaps?: () => void;
@@ -53,6 +52,7 @@ export function ComparePlayerCard({
   heatmap,
   playerId,
   excludePlayerId,
+  positionFamily,
   onPlayerChange,
   mapsMode = false,
   onToggleMaps,
@@ -79,7 +79,7 @@ export function ComparePlayerCard({
         REPORT_MAP_FILTER_KEYS.map(async (key) => {
           const label = mapFilterLabel(m, key);
           try {
-            const res = await getPassMap(playerId, key, "all", POSITION_FAMILY);
+            const res = await getPassMap(playerId, key, "all", positionFamily);
             return {
               key,
               label,
@@ -112,6 +112,7 @@ export function ComparePlayerCard({
           label={side === "a" ? m.common.playerA : m.common.playerB}
           value={playerId}
           exclude={excludePlayerId}
+          positionFamily={positionFamily}
           onChange={onPlayerChange}
         />
         <h2 className="compare-maps-player-name">{String(player.player_name ?? "—")}</h2>
@@ -149,6 +150,7 @@ export function ComparePlayerCard({
         label={side === "a" ? m.common.playerA : m.common.playerB}
         value={playerId}
         exclude={excludePlayerId}
+        positionFamily={positionFamily}
         onChange={onPlayerChange}
       />
 
