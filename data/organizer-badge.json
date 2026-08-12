@@ -1,0 +1,1 @@
+{"cache_version": 1, "criteria": {"xpv_per_pass": "> P60", "threat_pass_pct": "< P50", "passes_total": "> P60", "xpass_coe_pct": "> P60"}, "thresholds": {"xpv_per_pass_p60": 0.35244, "threat_pass_pct_p50": 7.7, "passes_total_p60": 50.2568, "xpass_coe_pct_p60": 3.9240000000000004}, "player_ids": ["339447"], "player_count": 1}

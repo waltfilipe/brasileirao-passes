@@ -1,0 +1,62 @@
+const LEAGUE_LABELS: Record<string, string> = {
+  premier_league: "Premier League",
+  italia_seriea: "Serie A",
+  laliga: "La Liga",
+  bundesliga: "Bundesliga",
+  ligue1: "Ligue 1",
+};
+
+export function formatLeagueName(
+  league?: string | null,
+  leagueSource?: string | null,
+): string {
+  const named = league?.trim();
+  if (named) return named;
+  const source = leagueSource?.trim();
+  if (!source) return "—";
+  return LEAGUE_LABELS[source] ?? source.replace(/_/g, " ");
+}
+
+export function formatContractUntil(value: unknown): string {
+  if (value == null || value === "") return "—";
+  const s = String(value).trim();
+  const ymd = s.match(/^(\d{4})[-/](\d{1,2})/);
+  if (ymd) return `${ymd[1]}/${ymd[2].padStart(2, "0")}`;
+  const year = s.match(/^(\d{4})/);
+  if (year) return year[1];
+  return s;
+}
+
+const CHANCE_CREATION_METRIC_KEYS = new Set([
+  "key_passes",
+  "passes_to_box",
+  "test_impact_v2_start_final_third_p90",
+  "chance_creation_xpv",
+]);
+
+function formatImpactRate(value: unknown): string {
+  if (value == null || Number.isNaN(Number(value))) return "—";
+  return `${Number(value).toFixed(1)}%`;
+}
+
+export function formatMetric(value: unknown, key?: string): string {
+  if (value == null) return "—";
+  if (typeof value === "number") {
+    if (key === "threat_pass_pct") return formatImpactRate(value);
+    if (key?.startsWith("def_") && key.endsWith("_pct")) {
+      return `${value.toFixed(1)}%`;
+    }
+    if (key?.includes("pct") || key?.includes("coe")) {
+      return `${value >= 0 ? "+" : ""}${value.toFixed(1)} pp`;
+    }
+    if (key && CHANCE_CREATION_METRIC_KEYS.has(key)) {
+      if (key === "chance_creation_xpv") return value.toFixed(2);
+      return value.toFixed(2);
+    }
+    if (Number.isInteger(value) && !key?.includes("p90") && !key?.includes("score")) {
+      return value.toLocaleString();
+    }
+    return value.toFixed(1);
+  }
+  return String(value);
+}
