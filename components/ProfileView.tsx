@@ -143,6 +143,7 @@ export function ProfileView({
               <XpIndicesPanel
                 indices={data.xp_indices ?? []}
                 roundGrades={data.xp_round_grades ?? []}
+                hideImpact
               />
               <PassLengthMix data={data} />
             </div>

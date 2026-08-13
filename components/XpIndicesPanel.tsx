@@ -22,6 +22,7 @@ type Props = {
   roundGrades?: XpRoundGrade[];
   accent?: string;
   expandAll?: boolean;
+  hideImpact?: boolean;
 };
 
 function IndexRow({
@@ -59,10 +60,11 @@ export function XpIndicesPanel({
   roundGrades = [],
   accent,
   expandAll = false,
+  hideImpact = false,
 }: Props) {
   const { m } = useI18n();
   const indexTips = m.tooltips.index;
-  const rows = indices.filter((i) => i.tier);
+  const rows = indices.filter((i) => i.tier && !(hideImpact && i.key === "impact"));
   if (!rows.length) return null;
 
   const consistency = rows.find((i) => i.key === "consistency");

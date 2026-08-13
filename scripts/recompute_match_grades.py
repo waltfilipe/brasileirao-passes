@@ -99,6 +99,53 @@ def _merge_xp_composite_fields(xp: dict[str, Any], row: dict[str, Any]) -> None:
             xp[key] = val
 
 
+def _force_featured_bar_eligibility(rows: list[dict[str, Any]], featured_ids: set[str]) -> None:
+    for row in rows:
+        if str(row.get("player_id")) in featured_ids:
+            row["xp_profile_bars_eligible"] = True
+            row.pop("xp_profile_ineligible_reason", None)
+
+
+def _recompute_profile_bars_for_pool(rows: list[dict[str, Any]]) -> None:
+    """Re-run profile bar and secondary index attachment after eligibility override."""
+    eligible_rows = [row for row in rows if row.get("xp_profile_bars_eligible")]
+    if not eligible_rows:
+        return
+
+    import pandas as pd
+
+    xstats._ensure_xpass_total_coe_pct(eligible_rows)
+    eligible_df = pd.DataFrame(eligible_rows)
+    lethality_composite = xstats._mean_z_columns(eligible_df, xstats.LETHALITY_METRICS)
+    xstats._attach_index_display_scores(
+        eligible_rows,
+        "xp_edge_index",
+        "xp_edge_display",
+        lethality_composite,
+    )
+    for raw_key, display_key, metric_cols in xstats.XP_PROFILE_BAR_SPECS:
+        xstats._attach_median_rank_display_scores(
+            eligible_rows,
+            metric_cols,
+            raw_key,
+            display_key,
+        )
+    for metric in xstats.XP_PROFILE_SUBMETRICS:
+        xstats._attach_median_rank_display_scores(
+            eligible_rows,
+            (metric,),
+            f"{metric}_sub_index",
+            f"{metric}_sub_display",
+        )
+    xstats._blend_precision_with_stratum(eligible_rows)
+    xstats._attach_secondary_indices(eligible_rows)
+    xstats._attach_xp_profile_archetypes(eligible_rows)
+
+    for row in rows:
+        if not row.get("xp_profile_bars_eligible"):
+            xstats._clear_xp_profile_bar_scores(row)
+
+
 def main() -> None:
     _ensure_br_csv()
     player_ids = [str(pid) for pid in json.loads(PLAYER_IDS_FILE.read_text(encoding="utf-8"))]
@@ -117,6 +164,13 @@ def main() -> None:
 
         print("Recomputing composite match grades and profile indices…")
         xstats.attach_composite_indices(pool_rows)
+        featured_in_family = {
+            pid for pid in featured
+            if pid in {str(row["player_id"]) for row in pool_rows}
+        }
+        if featured_in_family:
+            _force_featured_bar_eligibility(pool_rows, featured_in_family)
+            _recompute_profile_bars_for_pool(pool_rows)
         for row in pool_rows:
             xp_lookup[str(row["player_id"])] = row
 
