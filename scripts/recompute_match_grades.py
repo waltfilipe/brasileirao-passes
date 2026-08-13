@@ -49,6 +49,30 @@ XP_COMPOSITE_PREFIXES = (
     "xp_quality_",
     "xp_consistency_",
     "xp_profile_archetype",
+    "prod_",
+    "prec_",
+    "leth_",
+)
+
+PROFILE_GRADE_KEYS = (
+    "xp_pass_rating",
+    "prod_grade_geral",
+    "prod_grade_rel",
+    "prod_grade_blend",
+    "prod_rel_gap",
+    "prod_rel_lift_badge",
+    "prod_rel_gap_pool_mean",
+    "prod_rel_gap_pool_p70",
+    "prec_grade_geral",
+    "prec_grade_stratum",
+    "prec_grade_blend",
+    "prec_stratum_gap",
+    "prec_stratum_lift_badge",
+    "prec_stratum_gap_pool_mean",
+    "prec_stratum_gap_pool_p70",
+    "leth_grade_xpv",
+    "leth_grade_threat",
+    "leth_grade_blend",
 )
 
 POOL_METRICS_COMPOSITE_KEYS = (
@@ -171,6 +195,7 @@ def main() -> None:
         if featured_in_family:
             _force_featured_bar_eligibility(pool_rows, featured_in_family)
             _recompute_profile_bars_for_pool(pool_rows)
+        xstats.attach_xp_pass_ratings(pool_rows)
         for row in pool_rows:
             xp_lookup[str(row["player_id"])] = row
 
@@ -194,6 +219,9 @@ def main() -> None:
         profile["xp_bars"] = build_xp_profile_bars(xp)
         profile["xp_round_grades"] = build_round_grade_series(xp, None)
         profile["xp_game_consistency_score"] = row.get("xp_game_consistency_score")
+        for key in PROFILE_GRADE_KEYS:
+            if key in row:
+                profile[key] = row[key]
         profile_path.write_text(json.dumps(profile, ensure_ascii=False), encoding="utf-8")
         updated += 1
 

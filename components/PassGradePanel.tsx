@@ -1,6 +1,6 @@
 "use client";
 
-import { passGradeGradientColor, passGradePct } from "@/lib/gradeColors";
+import { passGradeGradientColor, sofascoreBarPosition, sofascoreGradePct } from "@/lib/gradeColors";
 import { useBarRevealAnimation, useCountUp } from "@/lib/useBarRevealAnimation";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { useI18n } from "@/lib/i18n/context";
@@ -13,10 +13,10 @@ type Props = {
 };
 
 function tierKey(score: number): keyof Messages["passGrade"]["tiers"] {
-  if (score >= 8.2) return "elite";
-  if (score >= 7) return "veryGood";
-  if (score >= 6) return "good";
-  if (score >= 5) return "average";
+  if (score >= 8.5) return "elite";
+  if (score >= 7.8) return "veryGood";
+  if (score >= 6.9) return "good";
+  if (score >= 5.8) return "average";
   return "belowAverage";
 }
 
@@ -47,8 +47,8 @@ export function PassGradePanel({ rating, animate = false, animationKey }: Props)
     );
   }
 
-  const pct = passGradePct(displayScore);
-  const markerPct = Math.max(1.5, Math.min(98.5, pct));
+  const pct = sofascoreGradePct(displayScore);
+  const markerPct = sofascoreBarPosition(displayScore);
   const shownPct = revealed ? pct : 0;
   const shownMarkerPct = revealed ? markerPct : 0;
   const color = passGradeGradientColor(pct);

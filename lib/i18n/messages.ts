@@ -137,6 +137,27 @@ export type Messages = {
       belowAverage: string;
     };
   };
+  productivity: {
+    title: string;
+    general: string;
+    relative: string;
+    generalTip: string;
+    relativeTip: string;
+  };
+  precision: {
+    title: string;
+    generalCoe: string;
+    stratumCoe: string;
+    generalCoeTip: string;
+    stratumCoeTip: string;
+  };
+  lethality: {
+    title: string;
+    xpvPerPass: string;
+    impactRate: string;
+    xpvPerPassTip: string;
+    impactRateTip: string;
+  };
   passLengthMix: {
     title: string;
     short: string;
@@ -234,6 +255,10 @@ export type Messages = {
   badges: {
     organizer: string;
     organizerTooltip: string;
+    prodRelLift: string;
+    prodRelLiftTooltip: string;
+    precStratumLift: string;
+    precStratumLiftTooltip: string;
   };
   roundStats: {
     grade: string;
@@ -576,6 +601,12 @@ const en: Messages = {
     organizer: "Organizer",
     organizerTooltip:
       "High xPV/Pass and pass volume with below-median Impact Rate and strong short-pass COE vs the midfielder pool.",
+    prodRelLift: "Team share lift",
+    prodRelLiftTooltip:
+      "Relative productivity exceeds General by {gap} pts — above P70 in the eligible pool (threshold {p70}; pool mean gap {mean}).",
+    precStratumLift: "Volume stratum lift",
+    precStratumLiftTooltip:
+      "COE in volume stratum exceeds General COE by {gap} pts — above P70 in the eligible pool (threshold {p70}; pool mean gap {mean}).",
   },
   roundStats: {
     grade: "Grade",
@@ -598,6 +629,33 @@ const en: Messages = {
       average: "Average",
       belowAverage: "Below average",
     },
+  },
+  productivity: {
+    title: "Productivity",
+    general: "General (xP / game)",
+    relative: "Relative (team share)",
+    generalTip:
+      "Sofascore-style grade from xP per 90 (volume). Median ≈ 6.9; 8 is very good; 9+ is rare.",
+    relativeTip:
+      "Sofascore-style grade from your xP/90 vs team xP per game (R-D ratio). Median ≈ 6.9; 8 is very good.",
+  },
+  precision: {
+    title: "Precision",
+    generalCoe: "General COE (all passes)",
+    stratumCoe: "COE in volume stratum",
+    generalCoeTip:
+      "Sofascore-style grade from total completion-over-expected (COE) vs the position pool.",
+    stratumCoeTip:
+      "Sofascore-style grade from total-pass COE vs peers in the same pass-volume quartile (all passes).",
+  },
+  lethality: {
+    title: "Lethality",
+    xpvPerPass: "xPV / pass",
+    impactRate: "Impact rate",
+    xpvPerPassTip:
+      "Sofascore-style grade from destination value per completed pass (xPV/pass). Median ≈ 6.9; 8 is very good; 9+ is rare.",
+    impactRateTip:
+      "Sofascore-style grade from share of passes classified as impact passes (threat_pass_pct). Median ≈ 6.9; 8 is very good.",
   },
   passLengthMix: {
     title: "Pass Length Mix",
@@ -1016,7 +1074,13 @@ const pt: Messages = {
   badges: {
     organizer: "Organizador",
     organizerTooltip:
-      "Alto xPV/Pass e volume de passes, Impact Rate abaixo da mediana e COE em passes curtos forte vs o pool de médios.",
+      "Alto xPV/Pass e volume de passes, Impact Rate abaixo da mediana e COE em passes curtos forte vs o pool.",
+    prodRelLift: "Share no time",
+    prodRelLiftTooltip:
+      "Produtividade relativa supera a geral por {gap} pts — acima do P70 no pool elegível (corte {p70}; média do pool {mean}).",
+    precStratumLift: "Extrato de volume",
+    precStratumLiftTooltip:
+      "COE no extrato supera o COE geral por {gap} pts — acima do P70 no pool elegível (corte {p70}; média do pool {mean}).",
   },
   roundStats: {
     grade: "Nota",
@@ -1039,6 +1103,33 @@ const pt: Messages = {
       average: "Médio",
       belowAverage: "Abaixo da média",
     },
+  },
+  productivity: {
+    title: "Produtividade",
+    general: "Geral (xP / jogo)",
+    relative: "Relativo (share no time)",
+    generalTip:
+      "Nota Sofascore do xP por 90 (volume). Mediana ≈ 6,9; 8 é muito bom; 9+ é raro.",
+    relativeTip:
+      "Nota Sofascore do xP/90 vs xP/jogo do time (ratio R-D). Mediana ≈ 6,9; 8 é muito bom.",
+  },
+  precision: {
+    title: "Precisão",
+    generalCoe: "COE geral (todos os passes)",
+    stratumCoe: "COE no extrato de volume",
+    generalCoeTip:
+      "Nota Sofascore do COE total (completion-over-expected) vs o pool da posição.",
+    stratumCoeTip:
+      "Nota Sofascore do COE de todos os passes vs pares no mesmo quartil de volume de passes.",
+  },
+  lethality: {
+    title: "Letalidade",
+    xpvPerPass: "xPV / passe",
+    impactRate: "Taxa de impacto",
+    xpvPerPassTip:
+      "Nota Sofascore do valor de destino por passe completado (xPV/passe). Mediana ≈ 6,9; 8 é muito bom; 9+ é raro.",
+    impactRateTip:
+      "Nota Sofascore da parcela de passes classificados como impact passes (threat_pass_pct). Mediana ≈ 6,9; 8 é muito bom.",
   },
   passLengthMix: {
     title: "Mix de comprimento de passe",

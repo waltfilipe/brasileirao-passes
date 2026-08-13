@@ -139,11 +139,37 @@ export function ProfileView({
 
             <div className="player-card xp-profile-card">
               <h3 className="section-label">{m.sections.xpProfile}</h3>
-              <XpProfileBars bars={data.xp_bars} animate animationKey={playerId} />
+              <XpProfileBars
+                bars={data.xp_bars}
+                productivity={{
+                  geral: data.prod_grade_geral,
+                  secondary: data.prod_grade_rel,
+                  blend: data.prod_grade_blend,
+                  relLiftBadge: data.prod_rel_lift_badge,
+                  relGap: data.prod_rel_gap,
+                  relGapPoolMean: data.prod_rel_gap_pool_mean,
+                  relGapPoolP70: data.prod_rel_gap_pool_p70,
+                }}
+                precision={{
+                  geral: data.prec_grade_geral,
+                  secondary: data.prec_grade_stratum,
+                  blend: data.prec_grade_blend,
+                  stratumLiftBadge: data.prec_stratum_lift_badge,
+                  stratumGap: data.prec_stratum_gap,
+                  stratumGapPoolMean: data.prec_stratum_gap_pool_mean,
+                  stratumGapPoolP70: data.prec_stratum_gap_pool_p70,
+                }}
+                lethality={{
+                  geral: data.leth_grade_xpv,
+                  secondary: data.leth_grade_threat,
+                  blend: data.leth_grade_blend,
+                }}
+                animate
+                animationKey={playerId}
+              />
               <XpIndicesPanel
                 indices={data.xp_indices ?? []}
                 roundGrades={data.xp_round_grades ?? []}
-                hideImpact
               />
               <PassLengthMix data={data} />
             </div>

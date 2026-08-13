@@ -1628,6 +1628,156 @@ button, input, select { font: inherit; }
   gap: 0.65rem;
 }
 
+/* Sofascore pillar accordions (Productivity / Precision / Lethality) */
+.sofascore-pillar-accordion {
+  margin: 0;
+  border-color: rgba(148, 163, 184, 0.14);
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.sofascore-pillar-trigger {
+  padding: 0.62rem 0.7rem;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sofascore-pillar-trigger-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.sofascore-pillar-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--text-secondary);
+}
+
+.sofascore-pillar-icon {
+  flex-shrink: 0;
+}
+
+.sofascore-pillar-score {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  flex-shrink: 0;
+  min-width: 2.25rem;
+  text-align: right;
+}
+
+.sofascore-pillar-panel {
+  padding: 0.55rem 0.7rem 0.75rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.sofascore-pillar-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.sofascore-grade-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.38rem;
+  padding: 0.55rem 0.62rem;
+  border-radius: var(--radius-sm);
+  background: rgba(2, 6, 23, 0.35);
+  border: 1px solid rgba(148, 163, 184, 0.08);
+}
+
+.sofascore-grade-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.sofascore-grade-label {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--muted);
+  letter-spacing: 0.01em;
+  line-height: 1.35;
+}
+
+.sofascore-grade-weight {
+  margin-left: 0.35rem;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(148, 163, 184, 0.75);
+}
+
+.sofascore-grade-value {
+  font-size: 0.88rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.sofascore-grade-value-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  flex-shrink: 0;
+}
+
+.prod-rel-lift-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 999px;
+  color: #0c4a6e;
+  background: linear-gradient(135deg, #bae6fd 0%, #38bdf8 100%);
+  border: 1px solid rgba(56, 189, 248, 0.55);
+  box-shadow: 0 1px 4px rgba(56, 189, 248, 0.28);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.prod-rel-lift-badge i {
+  font-size: 0.48rem;
+}
+
+.prec-stratum-lift-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 999px;
+  color: #4c1d95;
+  background: linear-gradient(135deg, #ddd6fe 0%, #a78bfa 100%);
+  border: 1px solid rgba(167, 139, 250, 0.55);
+  box-shadow: 0 1px 4px rgba(167, 139, 250, 0.28);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.prec-stratum-lift-badge i {
+  font-size: 0.48rem;
+}
+
+.sofascore-grade-meter {
+  width: 100%;
+}
+
+.sofascore-grade-meter .pass-grade-track {
+  height: 0.4rem;
+}
+
+.sofascore-grade-meter-sm .pass-grade-track {
+  height: 0.32rem;
+}
+
+.sofascore-pillar-accordion[open] .sofascore-pillar-chevron {
+  transform: rotate(90deg);
+}
+
 .xp-metric-block {
   display: flex;
   flex-direction: column;

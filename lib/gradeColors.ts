@@ -34,8 +34,30 @@ const PASS_GRADE_STOPS: [number, [number, number, number]][] = [
   [100, [0x16, 0xa3, 0x4a]],
 ];
 
+const PASS_GRADE_DISPLAY_FLOOR = 4.875;
+const PASS_GRADE_DISPLAY_SPAN = 3.625;
+
 export function passGradePct(displayScore: number): number {
-  return Math.max(0, Math.min(100, ((displayScore - 4.5) / 4.5) * 100));
+  return Math.max(
+    0,
+    Math.min(100, ((displayScore - PASS_GRADE_DISPLAY_FLOOR) / PASS_GRADE_DISPLAY_SPAN) * 100),
+  );
+}
+
+/** Sofascore-like productivity grades (4.8 → 0%, 9.5 → 100%). */
+export const SOFASCORE_GRADE_FLOOR = 4.8;
+export const SOFASCORE_GRADE_SPAN = 4.2;
+
+export function sofascoreGradePct(displayScore: number): number {
+  return Math.max(
+    0,
+    Math.min(100, ((displayScore - SOFASCORE_GRADE_FLOOR) / SOFASCORE_GRADE_SPAN) * 100),
+  );
+}
+
+export function sofascoreBarPosition(score: number | null | undefined): number {
+  if (score == null) return 0;
+  return Math.max(2, Math.min(98, sofascoreGradePct(score)));
 }
 
 export function passGradeGradientColor(pct: number): string {

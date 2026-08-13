@@ -268,6 +268,96 @@ def _write_json(path: Path, payload: Any) -> None:
     print(f"  wrote {path.relative_to(_OUTPUT_DIR)}")
 
 
+def _write_prod_rel_gap_stats(
+    bundles: dict[str, dict[str, Any]],
+    featured_ids: set[str],
+) -> None:
+    from collections import defaultdict
+
+    import numpy as np
+
+    by_pool: dict[str, list[float]] = defaultdict(list)
+    combined: list[float] = []
+    badge_ids: list[str] = []
+
+    for bundle in bundles.values():
+        xp_by_id = bundle["xp_by_id"]
+        analysis_by_id = {str(p["player_id"]): p for p in bundle["analysis_players"]}
+        for pid, xp in xp_by_id.items():
+            if pid not in featured_ids or not xp.get("xp_profile_bars_eligible"):
+                continue
+            gap = xp.get("prod_rel_gap")
+            if gap is None:
+                continue
+            gap_f = float(gap)
+            combined.append(gap_f)
+            player = analysis_by_id.get(str(pid), {})
+            pool_key = xstats._metric_rank_pool_key(player)
+            by_pool[pool_key].append(gap_f)
+            if xp.get("prod_rel_lift_badge"):
+                badge_ids.append(str(pid))
+
+    def _pool_stats(gaps: list[float]) -> dict[str, Any]:
+        if not gaps:
+            return {"n": 0, "mean_gap": None, "p70_gap": None}
+        return {
+            "n": len(gaps),
+            "mean_gap": round(float(np.mean(gaps)), 3),
+            "p70_gap": round(float(np.percentile(gaps, 70)), 3),
+        }
+
+    _write_json(_OUTPUT_DIR / "prod-rel-gap-stats.json", {
+        "combined": _pool_stats(combined),
+        "by_pool": {key: _pool_stats(gaps) for key, gaps in sorted(by_pool.items())},
+        "badge_player_ids": sorted(badge_ids),
+    })
+
+
+def _write_prec_stratum_gap_stats(
+    bundles: dict[str, dict[str, Any]],
+    featured_ids: set[str],
+) -> None:
+    from collections import defaultdict
+
+    import numpy as np
+
+    by_pool: dict[str, list[float]] = defaultdict(list)
+    combined: list[float] = []
+    badge_ids: list[str] = []
+
+    for bundle in bundles.values():
+        xp_by_id = bundle["xp_by_id"]
+        analysis_by_id = {str(p["player_id"]): p for p in bundle["analysis_players"]}
+        for pid, xp in xp_by_id.items():
+            if pid not in featured_ids or not xp.get("xp_profile_bars_eligible"):
+                continue
+            gap = xp.get("prec_stratum_gap")
+            if gap is None:
+                continue
+            gap_f = float(gap)
+            combined.append(gap_f)
+            player = analysis_by_id.get(str(pid), {})
+            pool_key = xstats._metric_rank_pool_key(player)
+            by_pool[pool_key].append(gap_f)
+            if xp.get("prec_stratum_lift_badge"):
+                badge_ids.append(str(pid))
+
+    def _pool_stats(gaps: list[float]) -> dict[str, Any]:
+        if not gaps:
+            return {"n": 0, "mean_gap": None, "p70_gap": None}
+        return {
+            "n": len(gaps),
+            "mean_gap": round(float(np.mean(gaps)), 3),
+            "p70_gap": round(float(np.percentile(gaps, 70)), 3),
+        }
+
+    _write_json(_OUTPUT_DIR / "prec-stratum-gap-stats.json", {
+        "combined": _pool_stats(combined),
+        "by_pool": {key: _pool_stats(gaps) for key, gaps in sorted(by_pool.items())},
+        "badge_player_ids": sorted(badge_ids),
+    })
+
+
 def _write_player_reports_ts(family_player_ids: dict[str, list[str]]) -> None:
     categories = []
     for family, title, plural, accent in _POSITION_FAMILIES:
@@ -625,6 +715,9 @@ def main() -> None:
         "profiles": list(all_profiles.keys()),
         "family_player_ids": family_player_ids,
     })
+
+    _write_prod_rel_gap_stats(bundles, player_id_set)
+    _write_prec_stratum_gap_stats(bundles, player_id_set)
 
     organizer_script = _REPO_ROOT / "scripts" / "build_organizer_data.py"
     if organizer_script.exists():
